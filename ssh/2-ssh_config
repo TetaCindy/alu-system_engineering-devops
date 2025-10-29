@@ -1,0 +1,6 @@
+# This SSH client configuration connects to 3.87.225.168 using the private key ~/.ssh/school and disables password authentication
+Host 3.87.225.168
+    HostName 3.87.225.168
+    User ubuntu
+    IdentityFile ~/.ssh/school
+    PasswordAuthentication no
