@@ -11,7 +11,7 @@ echo "ENABLED=1" > /etc/default/haproxy
 # Backup original configuration
 cp /etc/haproxy/haproxy.cfg /etc/haproxy/haproxy.cfg.bak
 
-# Configure HAproxy
+# Configure HAproxy with web-01 and web-02
 cat > /etc/haproxy/haproxy.cfg <<EOF
 global
     log /dev/log local0
@@ -45,8 +45,8 @@ frontend http_front
 
 backend http_back
     balance roundrobin
-    server 6814-web-01 3.87.225.168:80 check
-    server 6814-web-02 54.91.147.29:80 check
+    server web-01 3.87.225.168:80 check
+    server web-02 54.91.147.29:80 check
 EOF
 
 # Test HAproxy configuration
