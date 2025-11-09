@@ -1,26 +1,34 @@
 #!/usr/bin/env bash
-# Installs and configures HAproxy load balancer
+# Configures HAProxy to load balance HTTP traffic across two backend servers using roundrobin, managed by an init script.
 
-# Update package list and install HAproxy
-apt-get update
+set -e
+
+ID="[STUDENT_ID]"
+HOST1="${ID}-web-01"
+HOST2="${ID}-web-02"
+
+# Install HAProxy
+apt-get update -y
 apt-get install -y haproxy
 
-# Enable HAproxy to be started by init script
-echo "ENABLED=1" > /etc/default/haproxy
+# Enable HAProxy via init script (for both systemd and sysvinit compatibility)
+if grep -q '^ENABLED=' /etc/default/haproxy; then
+    sed -i 's/^ENABLED=.*/ENABLED=1/' /etc/default/haproxy
+else
+    echo "ENABLED=1" >> /etc/default/haproxy
+fi
 
-# Backup original configuration
-cp /etc/haproxy/haproxy.cfg /etc/haproxy/haproxy.cfg.bak
+systemctl enable haproxy
 
-# Configure HAproxy with web-01 and web-02
+# (Optional) Uncomment below and set actual IPs if DNS does not resolve the hostnames correctly
+# echo "10.0.0.2 $HOST1" >> /etc/hosts
+# echo "10.0.0.3 $HOST2" >> /etc/hosts
+
+# Configure haproxy
 cat > /etc/haproxy/haproxy.cfg <<EOF
 global
-    log /dev/log local0
-    log /dev/log local1 notice
-    chroot /var/lib/haproxy
-    stats socket /run/haproxy/admin.sock mode 660 level admin
-    stats timeout 30s
-    user haproxy
-    group haproxy
+    log /dev/log    local0
+    log /dev/log    local1 notice
     daemon
 
 defaults
@@ -31,29 +39,18 @@ defaults
     timeout connect 5000
     timeout client  50000
     timeout server  50000
-    errorfile 400 /etc/haproxy/errors/400.http
-    errorfile 403 /etc/haproxy/errors/403.http
-    errorfile 408 /etc/haproxy/errors/408.http
-    errorfile 500 /etc/haproxy/errors/500.http
-    errorfile 502 /etc/haproxy/errors/502.http
-    errorfile 503 /etc/haproxy/errors/503.http
-    errorfile 504 /etc/haproxy/errors/504.http
 
-frontend http_front
+frontend lb_http
     bind *:80
-    default_backend http_back
+    default_backend lb_back
 
-backend http_back
+backend lb_back
     balance roundrobin
-    server web-01 3.87.225.168:80 check
-    server web-02 54.91.147.29:80 check
+    server srv1 $HOST1:80 check
+    server srv2 $HOST2:80 check
 EOF
 
-# Test HAproxy configuration
-haproxy -c -f /etc/haproxy/haproxy.cfg
+systemctl restart haproxy
 
-# Restart HAproxy service
-service haproxy restart
+exit 0
 
-# Enable HAproxy to start on boot
-systemctl enable haproxy
