@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Script to display information about subdomains using dig and awk
+
+# Function to query and display subdomain information
+get_subdomain_info() {
+    subdomain=$1
+    domain=$2
+    full_domain="${subdomain}.${domain}"
+    
+    # Use dig to query DNS and awk to extract record type and destination
+    # shellcheck disable=SC2086
+    dig "$full_domain" | awk -v subdomain="$subdomain" '/^[^;]/ && /IN/ && !/^$/ {
+        if ($1 ~ /^[a-zA-Z0-9]/ && $4 == "A") {
+            print "The subdomain " subdomain " is a " $4 " record and points to " $5
+            exit
+        }
+    }'
+}
+
+# Main script logic
+domain=$1
+subdomain=$2
+
+if [ -z "$subdomain" ]; then
+    # If no subdomain specified, check all default subdomains
+    get_subdomain_info "www" "$domain"
+    get_subdomain_info "lb-01" "$domain"
+    get_subdomain_info "web-01" "$domain"
+    get_subdomain_info "web-02" "$domain"
+else
+    # If subdomain is specified, check only that subdomain
+    get_subdomain_info "$subdomain" "$domain"
+fi
